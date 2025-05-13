@@ -1,5 +1,12 @@
+<<<<<<< HEAD
 flask
 flask-cors
 pyngrok
 python-dotenv
+=======
+flask
+flask-cors
+pyngrok
+python-dotenv
+>>>>>>> 5ad1b3d80e97aa7485ad972537c33f044823b445
 google-generativeai
