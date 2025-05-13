@@ -1,5 +1,0 @@
-flask
-flask-cors
-pyngrok
-python-dotenv
-google-generativeai
