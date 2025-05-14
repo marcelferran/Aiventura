@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 // engine.dart
 
 import 'dart:convert';
@@ -90,4 +89,27 @@ Future<Map<String, dynamic>> generarHistoriaConOpciones(String nombre, String in
     throw Exception('Error generando historia: ${response.body}');
   }
 }
->>>>>>> 5ad1b3d80e97aa7485ad972537c33f044823b445
+
+Future<Map<String, dynamic>> continuarHistoriaConOpciones(String nombre, String historiaActual, String eleccion) async {
+  const String apiUrl = "https://TU_NGROK_URL.ngrok-free.app/continuar";
+
+  final response = await http.post(
+    Uri.parse(apiUrl),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({
+      "nombre": nombre,
+      "historia": historiaActual,
+      "opcion": eleccion,
+    }),
+  );
+
+  if (response.statusCode == 200) {
+    final json = jsonDecode(response.body);
+    return {
+      "historia": json['historia'],
+      "opciones": List<String>.from(json['opciones']),
+    };
+  } else {
+    throw Exception('Error al continuar historia: ${response.body}');
+  }
+}
