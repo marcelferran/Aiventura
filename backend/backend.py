@@ -66,6 +66,43 @@ def generar_historia_y_opciones():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/continuar", methods=["POST"])
+def continuar_historia():
+    data = request.json
+    nombre = data.get("nombre")
+    historia = data.get("historia")
+    opcion = data.get("opcion")
+
+    prompt_continuacion = f"""
+    Continúa esta historia: \"{historia}\"
+    tomando en cuenta que el usuario eligió: \"{opcion}\".
+    La continuación debe tener entre 100 y 150 palabras, con tono mágico y para niños.
+    """
+
+    prompt_opciones = f"""
+    Basado en la historia continuada, genera 3 nuevas opciones creativas para que el usuario elija cómo continuar.
+    Cada una con máximo 20 palabras, comenzando con:
+    - Si quieres que...
+    - Deseas que...
+    - Prefieres que...
+    """
+
+    try:
+        respuesta_historia = model.generate_content(prompt_continuacion).text.strip()
+        respuesta_opciones = model.generate_content(prompt_opciones).text.strip().splitlines()
+        opciones_filtradas = [op.strip("123. ") for op in respuesta_opciones if op.strip()]
+        if len(opciones_filtradas) > 3:
+            opciones_filtradas = opciones_filtradas[:3]
+
+        return jsonify({
+            "historia": respuesta_historia,
+            "opciones": opciones_filtradas
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # Exponer localmente por ngrok
 public_url = ngrok.connect(5000)
 print(f"🔗 Tu endpoint es: {public_url}/introduccion")
