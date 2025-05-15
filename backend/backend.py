@@ -6,6 +6,7 @@ from pyngrok import ngrok, conf
 import google.generativeai as genai
 import os
 from dotenv import load_dotenv
+import re
 
 # Cargar variables del archivo .env
 load_dotenv()
@@ -105,4 +106,36 @@ def continuar_historia():
 
 # Exponer localmente por ngrok
 public_url = ngrok.connect(5000)
-print(f"🔗 Tu endpoint es: {public_url}/introduccion")
+print(f"🔗 Tu nuevo endpoint es: {public_url}/introduccion")
+
+# Guardar en .env del frontend
+# Actualizar solo BASE_URL en el archivo .env del frontend sin borrar tus API keys
+# Ruta del archivo .env del frontend
+env_path = "../frontend/.env"
+
+# Leer variables existentes
+env_vars = {}
+if os.path.exists(env_path):
+    with open(env_path, "r") as f:
+        for line in f:
+            if "=" in line:
+                key, value = line.strip().split("=", 1)
+                env_vars[key] = value
+
+# Extraer solo la URL limpia de ngrok (sin texto adicional)
+match = re.search(r'"(https://[a-z0-9\-]+\.ngrok-free\.app)"', str(public_url))
+if match:
+    base_url_clean = match.group(1)
+    env_vars["BASE_URL"] = base_url_clean
+else:
+    print("❌ No se pudo extraer la URL limpia de ngrok.")
+    env_vars["BASE_URL"] = "URL_INVALIDO"
+
+# Reescribir archivo .env con claves previas y nueva BASE_URL
+with open(env_path, "w") as f:
+    for key, value in env_vars.items():
+        f.write(f"{key}={value}\n")
+
+print(f"✅ BASE_URL actualizado: {env_vars['BASE_URL']}")
+
+app.run(port=5000)
