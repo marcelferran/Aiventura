@@ -1,4 +1,4 @@
-# backend.py — Flask API con claves protegidas por archivo .env
+# backend.py — Flask API con claves protegidas por archivo .env OK
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
