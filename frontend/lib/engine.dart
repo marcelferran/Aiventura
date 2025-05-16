@@ -43,7 +43,13 @@ Future<Map<String, dynamic>> generarHistoriaConOpciones(String nombre, String in
   }
 }
 
-Future<Map<String, dynamic>> continuarHistoriaConOpciones(String nombre, String historiaActual, String eleccion) async {
+Future<Map<String, dynamic>> continuarHistoriaConOpciones(
+  String nombre,
+  String historiaActual,
+  String eleccion, {
+  required int interaccionActual,
+  required int interaccionesTotales,
+}) async {
   final Uri url = Uri.parse("$baseUrl/continuar");
 
   final response = await http.post(
@@ -53,6 +59,8 @@ Future<Map<String, dynamic>> continuarHistoriaConOpciones(String nombre, String 
       "nombre": nombre,
       "historia": historiaActual,
       "opcion": eleccion,
+      "interaccion_actual": interaccionActual,
+      "interacciones_totales": interaccionesTotales,
     }),
   );
 

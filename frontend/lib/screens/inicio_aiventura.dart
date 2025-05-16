@@ -51,16 +51,16 @@ class _InicioCuentoScreenState extends State<InicioCuentoScreen> {
     }
   }
 
-  void _seleccionarOpcion(String opcionElegida) {
+  void _seleccionarOpcion(String opcionSeleccionada) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ContinuacionCuentoScreen(
           userName: widget.userName,
-          historiaActual: _historia!,
-          eleccion: opcionElegida,
-          interaccionesTotales: widget.interacciones,
+          historiaAcumulada: _historia!,
+          opcionSeleccionada: opcionSeleccionada,
           interaccionActual: 2,
+          interaccionesTotales: widget.interacciones,
         ),
       ),
     );
