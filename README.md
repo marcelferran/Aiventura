@@ -1,4 +1,4 @@
-# 🌈 Aiventura — Crea tu propio cuento con IA, imágenes y PDF
+# ✨ Aiventura — Crea tu propia aventura con IA
 
 **Aiventura** es una app interactiva diseñada para niños y adolescentes, que permite crear cuentos mágicos a partir de su imaginación con ayuda de la Inteligencia Artificial.
 
@@ -50,7 +50,7 @@
 cd backend
 pip install -r requirements.txt
 
-## Crea un archivo .env con:
+Crea un archivo .env con:
 OPENAI_API_KEY=tu_clave_de_openai
 GOOGLE_API_KEY=tu_clave_de_gemini
 NGROK_AUTH_TOKEN=tu_token_de_ngrok
@@ -65,14 +65,14 @@ flutter run
 Asegúrate de tener BASE_URL apuntando a tu ngrok activo.
 
 
-## 🏷️ Versionado
-## Versión estable actual:
+🏷️ Versionado
+Versión estable actual:
 
 git tag -a v1.0-estable-pdf -m "Primera versión funcional con generación de cuento, imagen ilustrada y PDF"
 git push origin v1.0-estable-pdf
 
 
-## 📌 Roadmap (pendientes)
+📌 Roadmap (pendientes)
 🎨 Mejorar diseño visual y UI infantil
 
 🌍 Agregar opción multilenguaje (ES/EN)
@@ -84,10 +84,10 @@ git push origin v1.0-estable-pdf
 ☁️ Guardar historias en la nube (Firebase)
 
 
-## 👨‍💻 Autor
+👨‍💻 Autor
 Marcel Ferran Castro Ponce de Leon
 Senior Data Scientist & Geomechanics Engineer
-📍 México / Francia
+📍 México
 📧 [marcel.ferran@gmail.com]
 
 
