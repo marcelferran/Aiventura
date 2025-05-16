@@ -51,6 +51,7 @@ import 'package:http/http.dart' as http;
 
 const String baseUrl = "https://f173-35-236-208-235.ngrok-free.app";
 
+
 Future<String> obtenerIntroduccion(String nombre, int interacciones) async {
   final response = await http.post(
     Uri.parse("$baseUrl/introduccion"),
