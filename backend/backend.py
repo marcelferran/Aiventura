@@ -5,8 +5,14 @@ from flask_cors import CORS
 from pyngrok import ngrok, conf, exception
 import google.generativeai as genai
 import os
+import io
 from dotenv import load_dotenv
 import re
+from fpdf import FPDF
+from PIL import Image
+import requests
+from datetime import datetime
+import openai
 
 # Cargar variables
 load_dotenv()
@@ -70,49 +76,125 @@ def generar_historia_y_opciones():
         return jsonify({"error": str(e)}), 500
 
 @app.route("/continuar", methods=["POST"])
-def continuar_historia():
+def continuar():
     data = request.json
-    nombre = data.get("nombre")
-    historia = data.get("historia")
-    opcion = data.get("opcion")
-    actual = int(data.get("interaccion_actual", 1))
-    total = int(data.get("interacciones_totales", 3))
+    nombre = data["nombre"]
+    historia = data["historia"]
+    opcion = data["opcion"]
+    actual = int(data["interaccion_actual"])
+    total = int(data["interacciones_totales"])
 
-    prompt_continuacion = f"""
-    Continúa esta historia: "{historia}"
-    tomando en cuenta que el usuario eligió: "{opcion}".
-    Escribe una parte coherente, mágica e infantil de 100 a 150 palabras.
-    """
+    # Prompt para continuar la historia
+    prompt_continuacion = (
+        f"Continúa este cuento infantil según la opción seleccionada. "
+        f"Escribe exactamente 100 palabras como máximo, usando estilo sencillo, divertido y apropiado para niños.\n\n"
+        f"Nombre del niño: {nombre}\n"
+        f"Historia hasta ahora:\n{historia.strip()}\n\n"
+        f"Opción seleccionada: {opcion}\n\n"
+        f"Continuación:"
+    )
 
     try:
-        nueva_parte = model.generate_content(prompt_continuacion).text.strip()
+        respuesta_historia = model.generate_content(prompt_continuacion).text.strip()
 
-        if actual > total:
+        # Si ya se alcanzó el total de interacciones, no generar opciones
+        if actual >= total:
             return jsonify({
-                "historia": nueva_parte,
+                "historia": respuesta_historia,
                 "opciones": []
             })
 
-        prompt_opciones = f"""
-        Basado en la historia: "{nueva_parte}"
-        genera 3 opciones diferentes, creativas y mágicas para continuar.
-        Cada una con máximo 20 palabras y comenzando con:
-        - Si quieres que...
-        - Deseas que...
-        - Prefieres que...
-        No repitas opciones anteriores ni incluyas instrucciones como "elige una opción".
-        """
+        # Prompt para generar 3 opciones
+        prompt_opciones = (
+            f"Basado en esta parte del cuento infantil:\n\n{respuesta_historia}\n\n"
+            f"Escribe 3 opciones creativas para que el niño elija cómo continúa la historia. "
+            f"Cada opción debe tener máximo 20 palabras. Enuméralas del 1 al 3."
+        )
 
-        opciones_raw = model.generate_content(prompt_opciones).text.strip().splitlines()
-        opciones = [op.strip("123.- ") for op in opciones_raw if is_valid_option(op)][:3]
+        respuesta_opciones = model.generate_content(prompt_opciones).text.strip()
+        lista_opciones = [line for line in respuesta_opciones.splitlines() if line.strip()]
 
         return jsonify({
-            "historia": nueva_parte,
-            "opciones": opciones
+            "historia": respuesta_historia,
+            "opciones": lista_opciones
         })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+@app.route("/generar_pdf", methods=["POST"])
+def generar_pdf():
+    data = request.json
+    historia = data.get("historia", "")
+    titulo = data.get("titulo", "Mi cuento mágico")
+    autor = data.get("autor", "Anónimo")
+
+    prompt = (
+        f"Children's book cover illustration. Title: '{titulo}'. "
+        f"Style: cute, magical, digital art, vibrant colors. "
+        f"Scene inspired by: {historia[:300]}"
+    )
+
+    def limpiar_texto(texto):
+        return (
+            texto
+            .replace('—', '-')
+            .replace('“', '"').replace('”', '"')
+            .replace('‘', "'").replace('’', "'")
+            .encode('latin-1', 'ignore')
+            .decode('latin-1')
+        )
+
+    try:
+        response = client.images.generate(
+            model="dall-e-2",
+            prompt=prompt,
+            n=1,
+            size="512x512"
+        )
+        image_url = response.data[0].url
+        image_data = requests.get(image_url).content
+        portada_path = "portada.jpg"
+        image = Image.open(io.BytesIO(image_data)).convert("RGB")
+        image.save(portada_path)
+
+        pdf = FPDF(format='A5')
+        pdf.add_page()
+        pdf.image(portada_path, x=10, y=10, w=130)
+        pdf.set_font("Arial", "B", 16)
+        pdf.ln(90)
+        pdf.cell(0, 10, limpiar_texto(titulo), ln=True, align='C')
+        pdf.set_font("Arial", "", 12)
+        pdf.cell(0, 10, f"Por {limpiar_texto(autor)} - {datetime.today().strftime('%d/%m/%Y')}", ln=True, align='C')
+
+        # Historia
+        pdf.add_page()
+        pdf.set_font("Arial", size=11)
+        for linea in historia.split('\n'):
+            pdf.multi_cell(0, 8, limpiar_texto(linea))
+
+        # Disclaimer
+        pdf.add_page()
+        disclaimer = (
+            "Este cuento fue generado por inteligencia artificial como parte de la aplicación Aiventura.\n\n"
+            "Aunque hemos diseñado este sistema para ser seguro y divertido para niños, ocasionalmente puede generar "
+            "contenido incoherente o inesperado. Se recomienda el uso bajo supervisión de un adulto.\n\n"
+            "El uso de esta aplicación implica la aceptación de estas condiciones.\n\n"
+        )
+        pdf.multi_cell(0, 8, limpiar_texto(disclaimer))
+        pdf.set_y(-20)
+        pdf.set_font("Arial", "I", 9)
+        pdf.cell(0, 10, limpiar_texto("© Aiventura 2025. Todos los derechos reservados."), ln=True, align='C')
+
+        pdf.output("cuento_final.pdf")
+        return jsonify({"mensaje": "PDF generado exitosamente con portada ilustrada por DALL·E."})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 def is_valid_option(text):
     text = text.lower()

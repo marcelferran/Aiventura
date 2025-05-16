@@ -1,5 +1,6 @@
 // screens/inicio_aiventura.dart
 
+import 'package:frontend/screens/continuacion.dart';
 import 'package:flutter/material.dart';
 import '../engine.dart';
 import 'continuacion.dart';
@@ -55,7 +56,7 @@ class _InicioCuentoScreenState extends State<InicioCuentoScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ContinuacionCuentoScreen(
+        builder: (context) => ContinuacionScreen(
           userName: widget.userName,
           historiaAcumulada: _historia!,
           opcionSeleccionada: opcionSeleccionada,

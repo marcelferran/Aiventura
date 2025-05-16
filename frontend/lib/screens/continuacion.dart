@@ -1,131 +1,169 @@
-// lib/screens/continuacion.dart
+// continuacion.dart — restaurado al estado funcional, PDF con DALL·E conservado
 
 import 'package:flutter/material.dart';
-import '../engine.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-class ContinuacionCuentoScreen extends StatefulWidget {
+class ContinuacionScreen extends StatefulWidget {
   final String userName;
   final String historiaAcumulada;
   final String opcionSeleccionada;
-  final int interaccionesTotales;
   final int interaccionActual;
+  final int interaccionesTotales;
 
-  const ContinuacionCuentoScreen({
+  const ContinuacionScreen({
     super.key,
     required this.userName,
     required this.historiaAcumulada,
     required this.opcionSeleccionada,
-    required this.interaccionesTotales,
     required this.interaccionActual,
+    required this.interaccionesTotales,
   });
 
   @override
-  State<ContinuacionCuentoScreen> createState() => _ContinuacionCuentoScreenState();
+  State<ContinuacionScreen> createState() => _ContinuacionScreenState();
 }
 
-class _ContinuacionCuentoScreenState extends State<ContinuacionCuentoScreen> {
-  bool _cargando = true;
+class _ContinuacionScreenState extends State<ContinuacionScreen> {
   String? _nuevaHistoria;
-  List<String>? _nuevasOpciones;
-  String? _error;
+  List<String> _opciones = [];
+  bool _cargando = false;
 
   @override
   void initState() {
     super.initState();
-    _continuarHistoria();
+    _generarContinuacion();
   }
 
-  Future<void> _continuarHistoria() async {
-    try {
-      final resultado = await continuarHistoriaConOpciones(
-        widget.userName,
-        widget.historiaAcumulada,
-        widget.opcionSeleccionada,
-        interaccionActual: widget.interaccionActual,
-        interaccionesTotales: widget.interaccionesTotales,
-      );
+  Future<void> _generarContinuacion() async {
+    setState(() => _cargando = true);
 
+    final response = await http.post(
+      Uri.parse("${dotenv.env['BASE_URL']}/continuar"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "nombre": widget.userName,
+        "historia": widget.historiaAcumulada,
+        "opcion": widget.opcionSeleccionada,
+        "interaccion_actual": widget.interaccionActual,
+        "interacciones_totales": widget.interaccionesTotales
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
       setState(() {
-        _nuevaHistoria = resultado['historia'];
-        _nuevasOpciones = resultado['opciones'];
+        _nuevaHistoria = data['historia'];
+        _opciones = List<String>.from(data['opciones'] ?? []);
         _cargando = false;
       });
-    } catch (e) {
-      setState(() {
-        _error = "Error al continuar la historia: $e";
-        _cargando = false;
-      });
+    } else {
+      setState(() => _cargando = false);
+      throw Exception("Error al continuar historia");
+    }
+  }
+
+  Future<void> _generarPDF() async {
+    final response = await http.post(
+      Uri.parse("${dotenv.env['BASE_URL']}/generar_pdf"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "titulo": "Mi cuento mágico",
+        "autor": widget.userName,
+        "historia": "${widget.historiaAcumulada}\n\n${_nuevaHistoria ?? ''}"
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final mensaje = jsonDecode(response.body)['mensaje'];
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text("✅ PDF generado"),
+            content: Text(mensaje),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cerrar"))
+            ],
+          ),
+        );
+      }
+    } else {
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text("❌ Error"),
+            content: Text("Error al generar el PDF: ${response.body}"),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cerrar"))
+            ],
+          ),
+        );
+      }
     }
   }
 
   void _seleccionarOpcion(String opcionElegida) {
-  final nuevaHistoriaAcumulada = "${widget.historiaAcumulada}\n\n${_nuevaHistoria!}";
+    final nuevaHistoriaAcumulada = "${widget.historiaAcumulada}\n\n${_nuevaHistoria ?? ''}";
 
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => ContinuacionCuentoScreen(
-        userName: widget.userName,
-        historiaAcumulada: nuevaHistoriaAcumulada,
-        opcionSeleccionada: opcionElegida,
-        interaccionActual: widget.interaccionActual + 1,
-        interaccionesTotales: widget.interaccionesTotales,
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ContinuacionScreen(
+          userName: widget.userName,
+          historiaAcumulada: nuevaHistoriaAcumulada,
+          opcionSeleccionada: opcionElegida,
+          interaccionActual: widget.interaccionActual + 1,
+          interaccionesTotales: widget.interaccionesTotales,
+        ),
       ),
-    ),
-  );
-}
-
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final bool esFinal = widget.interaccionActual > widget.interaccionesTotales;
+    final esFinal = _opciones.isEmpty;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Parte ${widget.interaccionActual} de ${widget.interaccionesTotales}"),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: _cargando
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null
-                ? Text(_error!, style: const TextStyle(color: Colors.red))
-                : SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+      appBar: AppBar(title: const Text("Continuación del cuento")),
+      body: _cargando
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_nuevaHistoria != null)
+                    Text(_nuevaHistoria!, style: const TextStyle(fontSize: 16)),
+                  const SizedBox(height: 20),
+                  if (esFinal)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text("Continuación de tu historia:", style: TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 10),
-                        Text(_nuevaHistoria ?? ""),
-                        const SizedBox(height: 30),
-
-                        if (!esFinal && _nuevasOpciones != null && _nuevasOpciones!.isNotEmpty)
-                          Column(
-                            children: _nuevasOpciones!.asMap().entries.map((entry) {
-                              final index = entry.key + 1;
-                              final opcion = entry.value;
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 4.0),
-                                child: ElevatedButton(
-                                  onPressed: () => _seleccionarOpcion(opcion),
-                                  child: Text("Opción $index: $opcion"),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-
-                        if (esFinal)
-                          const Padding(
-                            padding: EdgeInsets.only(top: 24.0),
-                            child: Text(
-                              "🎉 Fin del cuento. ¡Esperamos que te haya gustado!",
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          )
+                        const Text(
+                          "🎉 Fin del cuento. ¡Esperamos que te haya gustado!",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton.icon(
+                          onPressed: _generarPDF,
+                          icon: const Icon(Icons.picture_as_pdf),
+                          label: const Text("Generar cuento en PDF"),
+                        )
                       ],
                     ),
-                  ),
-      ),
+                  if (!esFinal && _opciones.isNotEmpty)
+                    ..._opciones.map(
+                      (op) => ElevatedButton(
+                        onPressed: () => _seleccionarOpcion(op),
+                        child: Text(op),
+                      ),
+                    )
+                ],
+              ),
+            ),
     );
   }
 }
