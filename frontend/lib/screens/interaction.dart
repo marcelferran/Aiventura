@@ -1,64 +1,90 @@
-// screens/interaction.dart
-
 import 'package:flutter/material.dart';
-import '../engine.dart';
-import 'intro_aiventura.dart';
 
-class InteractionCountScreen extends StatefulWidget {
-  final String userName;
-  const InteractionCountScreen({super.key, required this.userName});
+class InteractionScreen extends StatelessWidget {
+  final String historia;
+  final List<String> opciones;
+  final void Function(String) onSeleccion;
 
-  @override
-  State<InteractionCountScreen> createState() => _InteractionCountScreenState();
-}
-
-class _InteractionCountScreenState extends State<InteractionCountScreen> {
-  final _countController = TextEditingController();
-  String? _error;
-
-  void _proceed() async {
-    final count = int.tryParse(_countController.text.trim());
-    if (count == null || count < 3 || count > 5) {
-      setState(() {
-        _error = "Solo puedes elegir entre 3 y 5 interacciones.";
-      });
-      return;
-    }
-
-    final intro = await obtenerIntroduccion(widget.userName, count);
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => IntroScreen(
-          mensaje: intro,
-          userName: widget.userName,
-          interacciones: count,
-        ),
-      ),
-    );
-  }
+  const InteractionScreen({
+    super.key,
+    required this.historia,
+    required this.opciones,
+    required this.onSeleccion,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final fondo = const LinearGradient(
+      begin: Alignment.topRight,
+      end: Alignment.bottomLeft,
+      colors: [
+        Color(0xFF0F0C29),
+        Color(0xFF302B63),
+        Color(0xFF24243E),
+      ],
+    );
+
     return Scaffold(
-      backgroundColor: Colors.green.shade50,
-      appBar: AppBar(title: const Text("¿Cuántas interacciones quieres?")),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
+      appBar: AppBar(
+        title: const Text("✨ Tu historia continua..."),
+        backgroundColor: Colors.deepPurpleAccent,
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        elevation: 4,
+      ),
+      body: Container(
+        decoration: BoxDecoration(gradient: fondo),
+        padding: const EdgeInsets.all(20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text("Hola ${widget.userName}, ¿cuántas interacciones quieres en tu historia? (3 a 5)"),
-            TextField(
-              controller: _countController,
-              keyboardType: TextInputType.number,
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                historia,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontStyle: FontStyle.italic,
+                  height: 1.5,
+                ),
+              ),
             ),
-            if (_error != null)
-              Text(_error!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 24),
+            const Text(
+              '¿Cómo deseas que continúe tu historia?',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _proceed,
-              child: const Text("Iniciar historia"),
-            )
+            ...opciones.map(
+              (opcion) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: ElevatedButton(
+                  onPressed: () => onSeleccion(opcion),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.cyanAccent.shade700,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    elevation: 8,
+                    shadowColor: Colors.black38,
+                  ),
+                  child: Text(opcion),
+                ),
+              ),
+            ),
           ],
         ),
       ),

@@ -1,3 +1,4 @@
+
 # backend.py — Flask API con control seguro de ngrok y final correcto
 
 from flask import Flask, request, jsonify
@@ -18,8 +19,6 @@ import openai
 load_dotenv()
 GENAI_API_KEY = os.getenv("GENAI_API_KEY")
 NGROK_AUTH_TOKEN = os.getenv("NGROK_AUTH_TOKEN")
-
-# Configurar Gemini y ngrok
 genai.configure(api_key=GENAI_API_KEY)
 conf.get_default().auth_token = NGROK_AUTH_TOKEN
 model = genai.GenerativeModel(model_name="models/gemini-2.0-flash")
@@ -32,12 +31,7 @@ def generar_introduccion():
     data = request.json
     nombre = data.get("nombre")
     interacciones = data.get("interacciones")
-
-    prompt = f"""
-    Escribe un mensaje de bienvenida para un niño llamado {nombre}, diciendo que su historia tendrá {interacciones} interacciones.
-    Usa un tono mágico, positivo y emocionante.
-    """
-
+    prompt = f"Escribe un mensaje de bienvenida para un niño llamado {nombre}, diciendo que su historia tendrá {interacciones} interacciones. Usa un tono mágico, positivo y emocionante. No más de 20 palabras."
     try:
         response = model.generate_content(prompt)
         return jsonify({"mensaje": response.text.strip()})
@@ -49,15 +43,12 @@ def generar_historia_y_opciones():
     data = request.json
     nombre = data.get("nombre")
     inicio = data.get("inicio")
-
     prompt_historia = f"""
     Un niño llamado {nombre} escribió para comenzar su historia: "{inicio}"
     Continúa esa historia de forma coherente, infantil y mágica. Escribe una sola parte de exactamente 100 palabras.
     """
-
     try:
         historia = model.generate_content(prompt_historia).text.strip()
-
         prompt_opciones = f"""
         Basado en la historia: "{historia}"
         genera 3 opciones diferentes, creativas y mágicas para continuar.
@@ -67,12 +58,16 @@ def generar_historia_y_opciones():
         - Prefieres que...
         No repitas opciones anteriores ni incluyas instrucciones como "elige una opción".
         """
-
         opciones_raw = model.generate_content(prompt_opciones).text.strip().splitlines()
-        opciones = [op.strip("123.- ") for op in opciones_raw if is_valid_option(op)][:3]
-
-        return jsonify({"historia": historia, "opciones": opciones})
+        print("📄 Opciones generadas crudas:", opciones_raw)
+        opciones = [op.strip("123.- ").strip() for op in opciones_raw if is_valid_option(op)]
+        print("✅ Opciones válidas filtradas:", opciones)
+        return jsonify({
+            "historia": historia,
+            "opciones": opciones[:3]
+        })
     except Exception as e:
+        print(f"❌ Error en /inicio: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/continuar", methods=["POST"])
@@ -84,44 +79,31 @@ def continuar():
     actual = int(data["interaccion_actual"])
     total = int(data["interacciones_totales"])
 
-    # Prompt para continuar la historia
     prompt_continuacion = (
-        f"Continúa este cuento infantil según la opción seleccionada. "
+        f"Continúa este cuento un poco infantil según la opción seleccionada."
         f"Escribe exactamente 100 palabras como máximo, usando estilo sencillo, divertido y apropiado para niños.\n\n"
         f"Nombre del niño: {nombre}\n"
         f"Historia hasta ahora:\n{historia.strip()}\n\n"
         f"Opción seleccionada: {opcion}\n\n"
         f"Continuación:"
     )
-
     try:
         respuesta_historia = model.generate_content(prompt_continuacion).text.strip()
 
-        # Si ya se alcanzó el total de interacciones, no generar opciones
-        if actual >= total:
-            return jsonify({
-                "historia": respuesta_historia,
-                "opciones": []
-            })
+        if actual == total:
+            return jsonify({"historia": respuesta_historia, "opciones": []})
 
-        # Prompt para generar 3 opciones
         prompt_opciones = (
             f"Basado en esta parte del cuento infantil:\n\n{respuesta_historia}\n\n"
             f"Escribe 3 opciones creativas para que el niño elija cómo continúa la historia. "
-            f"Cada opción debe tener máximo 20 palabras. Enuméralas del 1 al 3."
+            f"Cada opción debe tener máximo 15 palabras y empezar con: 'Si quieres que...', 'Deseas que...', o 'Prefieres que...'."
         )
-
         respuesta_opciones = model.generate_content(prompt_opciones).text.strip()
-        lista_opciones = [line for line in respuesta_opciones.splitlines() if line.strip()]
+        lista_opciones = [line.strip("123.- ").strip() for line in respuesta_opciones.splitlines() if is_valid_option(line)]
 
-        return jsonify({
-            "historia": respuesta_historia,
-            "opciones": lista_opciones
-        })
-
+        return jsonify({"historia": respuesta_historia, "opciones": lista_opciones[:3]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
 
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -131,7 +113,6 @@ def generar_pdf():
     historia = data.get("historia", "")
     titulo = data.get("titulo", "Mi cuento mágico")
     autor = data.get("autor", "Anónimo")
-
     prompt = (
         f"Children's book cover illustration. Title: '{titulo}'. "
         f"Style: cute, magical, digital art, vibrant colors. "
@@ -140,8 +121,7 @@ def generar_pdf():
 
     def limpiar_texto(texto):
         return (
-            texto
-            .replace('—', '-')
+            texto.replace('—', '-')
             .replace('“', '"').replace('”', '"')
             .replace('‘', "'").replace('’', "'")
             .encode('latin-1', 'ignore')
@@ -149,6 +129,7 @@ def generar_pdf():
         )
 
     try:
+        print("🧠 Enviando prompt a DALL·E para generar imagen...")
         response = client.images.generate(
             model="dall-e-2",
             prompt=prompt,
@@ -169,14 +150,11 @@ def generar_pdf():
         pdf.cell(0, 10, limpiar_texto(titulo), ln=True, align='C')
         pdf.set_font("Arial", "", 12)
         pdf.cell(0, 10, f"Por {limpiar_texto(autor)} - {datetime.today().strftime('%d/%m/%Y')}", ln=True, align='C')
-
-        # Historia
         pdf.add_page()
         pdf.set_font("Arial", size=11)
         for linea in historia.split('\n'):
             pdf.multi_cell(0, 8, limpiar_texto(linea))
 
-        # Disclaimer
         pdf.add_page()
         disclaimer = (
             "Este cuento fue generado por inteligencia artificial como parte de la aplicación Aiventura.\n\n"
@@ -184,25 +162,29 @@ def generar_pdf():
             "contenido incoherente o inesperado. Se recomienda el uso bajo supervisión de un adulto.\n\n"
             "El uso de esta aplicación implica la aceptación de estas condiciones.\n\n"
         )
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(0, 10, "DISCLAIMER", ln=True, align='C')
+        pdf.set_font("Arial", size=11)
+        pdf.ln(5)
         pdf.multi_cell(0, 8, limpiar_texto(disclaimer))
         pdf.set_y(-20)
         pdf.set_font("Arial", "I", 9)
         pdf.cell(0, 10, limpiar_texto("© Aiventura 2025. Todos los derechos reservados."), ln=True, align='C')
 
         pdf.output("cuento_final.pdf")
-        return jsonify({"mensaje": "PDF generado exitosamente con portada ilustrada por DALL·E."})
-
+        print("✅ PDF generado correctamente.")
+        return jsonify({"mensaje": "PDF generado exitosamente con imagen e historia."})
     except Exception as e:
+        print(f"❌ Error al generar PDF: {e}")
         return jsonify({"error": str(e)}), 500
 
-
 def is_valid_option(text):
-    text = text.lower()
+    text = text.lower().strip()
     return (
-        "si quieres que" in text or
+        "si quieres" in text or
         "deseas que" in text or
         "prefieres que" in text
-    ) and "elige" not in text and "selecciona" not in text
+    ) and len(text) > 8
 
 # 🟢 INICIAR NGROK UNA SOLA VEZ
 try:
