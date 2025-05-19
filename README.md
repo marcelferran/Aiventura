@@ -1,6 +1,6 @@
 # Aiventura
 
-**Create Your Own Illustrated Aidventure with AI**
+**Create your own Aidventure with AI**
 
 Aiventura is an interactive storytelling app designed for children and teens. It empowers users to initiate a story, make choices about its progression, and witness artificial intelligence weave magical continuations and generate captivating illustrations. Ultimately, their unique adventure is compiled into a downloadable PDF complete with a personalized cover.
 
