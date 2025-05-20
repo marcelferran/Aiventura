@@ -82,4 +82,4 @@ marcel.ferran@gmail.com
 
 ## Aiventura Motto
 
-> “The Aidventure begins with your imagination... and AI brings it to life.”
+> “The Aidventure begins with your imagination... and AI brings it to life!”
