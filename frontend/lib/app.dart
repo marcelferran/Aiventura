@@ -1,4 +1,4 @@
-// app.dart
+// app.dart file
 
 import 'package:flutter/material.dart';
 import 'screens/welcome.dart';
