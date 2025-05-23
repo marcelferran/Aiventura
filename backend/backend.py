@@ -1,4 +1,4 @@
-# backend.py 
+# backend.py file
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
