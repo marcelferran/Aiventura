@@ -1,4 +1,4 @@
-// screens/interaction.dart
+// path screens/interaction.dart
 
 import 'package:flutter/material.dart';
 import '../engine.dart';
