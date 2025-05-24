@@ -1,4 +1,4 @@
-// screens/welcome.dart
+// path screens/welcome.dart
 
 import 'package:flutter/material.dart';
 import 'name_age.dart';
