@@ -1,4 +1,4 @@
-// path screens/userinfo.dart
+// path screens/userinfo
 
 import 'package:flutter/material.dart';
 import 'interaction.dart';
