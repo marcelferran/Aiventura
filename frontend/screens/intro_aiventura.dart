@@ -1,4 +1,4 @@
-// path screens/intro_aiventura.dart
+// path screens/intro_aiventura
 
 import 'package:flutter/material.dart';
 import 'inicio_cuento.dart';
