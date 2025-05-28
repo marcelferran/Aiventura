@@ -1,4 +1,4 @@
-// path screens/inicio_cuento.dart
+// path screens/inicio_cuento
 
 import 'package:flutter/material.dart';
 import '../engine.dart';
